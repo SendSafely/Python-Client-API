@@ -4,12 +4,12 @@ The SendSafely Python API lets you integrate SendSafely secure data transfer cap
 ## Quickstart
 The example below shows you how to install the `sendsafely` package, import it as a module, and use it to create a package. Make sure that you have [Python 3 or higher installed, as well as pip and Setuptools](https://packaging.python.org/tutorials/installing-packages/). 
 
-Download the latest [release package of the SendSafely Python API](https://github.com/SendSafely/Python-Client-API/releases) and install with pip
-```console
-python3 -m pip install sendsafely-1.0.1.tar.gz
+To install the SendSafely Python API, simply run
+```buildoutcfg
+pip install sendsafely
 ```
 
-Import the SendSafely module to start making your API calls
+Import the SendSafely modules to start making your API calls
 
 ```python
 from sendsafely import SendSafely, Package
