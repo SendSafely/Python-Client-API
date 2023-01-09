@@ -1,7 +1,6 @@
 import json
 import re
 import requests
-import base64
 import pgpy
 from pgpy import PGPMessage
 from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm
