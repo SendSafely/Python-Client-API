@@ -51,5 +51,18 @@ python3 sendsafely_rest_example.py
 
 For more information, please refer to our [Developer Website](https://sendsafely.github.io) to familiarize yourself with the core SendSafely API and common operations. You can find our documented REST API endpoints [here](https://bump.sh/doc/sendsafely-rest-api). 
 
+## SDK Testing Locally
+
+The below command will create a distribution file in the dist folder to be imported by an example:
+
+```
+python3 setup.py sdist --dist-dir=dist
+``` 
+
+and this will install the new module and modify the path as needed:
+```
+python3 -m pip install ./dist/sendsafely-x.y.z.tar.gz
+```
+
 ## Support
 For support, please contact support@sendsafely.com. 

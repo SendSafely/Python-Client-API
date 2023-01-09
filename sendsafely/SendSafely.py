@@ -1,6 +1,7 @@
 import json
 import re
 import requests
+import base64
 import pgpy
 from pgpy import PGPMessage
 from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm
@@ -124,9 +125,15 @@ class SendSafely:
         url = self.BASE_URL + endpoint
         headers = make_headers(self.API_SECRET, self.API_KEY, endpoint)
         try:
-            keycode = requests.get(url, headers=headers).json()["message"]
+            keycode_json = requests.get(url, headers=headers).json();
+            keycode = keycode_json['message'];
+            keycode_response = keycode_json['response'];
+            if keycode_response == 'FAIL':
+                e = 'No keycode found for the given Package ID: ' + package_id + ' and Public Key ID: ' + public_key_id;
+                raise GetKeycodeFailedException(details=str(e))
+
             key_pair = pgpy.PGPKey.from_blob(str(private_key))[0]
-            keycode_message = PGPMessage.from_blob(keycode)
+            keycode_message = pgpy.PGPMessage.from_blob(keycode)
             decrypted_keycode = key_pair.decrypt(keycode_message).message
             return {"keyCode": decrypted_keycode}
         except Exception as e:
