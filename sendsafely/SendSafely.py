@@ -128,8 +128,7 @@ class SendSafely:
             keycode = keycode_json['message'];
             keycode_response = keycode_json['response'];
             if keycode_response == 'FAIL':
-                e = 'No keycode found for the given Package ID: ' + package_id + ' and Public Key ID: ' + public_key_id;
-                raise GetKeycodeFailedException(details=str(e))
+                raise GetKeycodeFailedException(details=str(keycode))
 
             key_pair = pgpy.PGPKey.from_blob(str(private_key))[0]
             keycode_message = pgpy.PGPMessage.from_blob(keycode)
