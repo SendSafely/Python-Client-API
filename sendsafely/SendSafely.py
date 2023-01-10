@@ -131,7 +131,7 @@ class SendSafely:
                 raise GetKeycodeFailedException(details=str(keycode))
 
             key_pair = pgpy.PGPKey.from_blob(str(private_key))[0]
-            keycode_message = pgpy.PGPMessage.from_blob(keycode)
+            keycode_message = PGPMessage.from_blob(keycode)
             decrypted_keycode = key_pair.decrypt(keycode_message).message
             return {"keyCode": decrypted_keycode}
         except Exception as e:
