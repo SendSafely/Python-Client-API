@@ -1,0 +1,15 @@
+Copyright 2022 SendSafely Inc.
+
+The purpose of this NOTICE.txt file is to contain notices that are
+required by the copyright owners of the incorporated third party components
+noted and the respective licenses.
+Some of the accompanying products have an attribution requirement
+and are set forth below. Other accompanying products do not require
+attribution, so are not listed. See also the LICENSE.txt file.
+
+
+Requests
+-----------------
+Copyright 2019 Kenneth Reitz
+This product includes software developed by Kenneth Reitz
+

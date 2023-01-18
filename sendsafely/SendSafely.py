@@ -1,7 +1,10 @@
 import json
 import re
+import warnings
+
 import requests
 import pgpy
+from cryptography import CryptographyDeprecationWarning
 from pgpy import PGPMessage
 from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm
 from sendsafely.Package import Package
@@ -24,6 +27,7 @@ class SendSafely:
 
     def __init__(self, url, api_key, api_secret):
         super().__init__()
+        warnings.filterwarnings('ignore', category=CryptographyDeprecationWarning)
         self.BASE_URL = url + self.API_URL
         self.API_KEY = api_key
         self.API_SECRET = api_secret
@@ -124,7 +128,11 @@ class SendSafely:
         url = self.BASE_URL + endpoint
         headers = make_headers(self.API_SECRET, self.API_KEY, endpoint)
         try:
-            keycode = requests.get(url, headers=headers).json()["message"]
+            keycode_json = requests.get(url, headers=headers).json();
+            keycode = keycode_json['message'];
+            if keycode_json['response'] == 'FAIL':
+                raise GetKeycodeFailedException(details=str(keycode))
+
             key_pair = pgpy.PGPKey.from_blob(str(private_key))[0]
             keycode_message = PGPMessage.from_blob(keycode)
             decrypted_keycode = key_pair.decrypt(keycode_message).message
