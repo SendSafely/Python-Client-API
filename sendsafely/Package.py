@@ -2,8 +2,15 @@ import json
 import math
 import os
 import requests
+import cryptography
+major, minor, patch = [int(x, 10) for x in cryptography.__version__.split('.')]
+if major < 41:
+    from cryptography import CryptographyDeprecationWarning
+else:
+    from cryptography.utils import CryptographyDeprecationWarning
 from pgpy import PGPMessage
 from sendsafely.Progress import Progress
+import warnings
 
 from sendsafely.exceptions import CreatePackageFailedException, FinalizePackageFailedException, DownloadFileException, \
     UploadFileException, DeletePackageException, KeycodeRequiredException, GetPackageInformationFailedException, \
@@ -27,6 +34,7 @@ class Package:
         :param package_variables:
         """
         super().__init__()
+        warnings.filterwarnings('ignore', category=CryptographyDeprecationWarning)
         self.initialized_via_keycode = True
         if package_variables is None:
             self.client_secret = _generate_keycode()
@@ -283,11 +291,14 @@ class Package:
             raise DeleteFileException(details=response["message"])
         return response
 
-    def get_file_information(self, file_id):
+    def get_file_information(self, file_id, directory_id=None):
         """
         Return the file information for a specified fileId
         """
-        endpoint = "/package/" + self.package_id + "/file/" + file_id
+        if directory_id:
+            endpoint = "/package/" + self.package_id + "/directory/" + directory_id + "/file/" + file_id
+        else:
+            endpoint = "/package/" + self.package_id + "/file/" + file_id
         url = self.sendsafely.BASE_URL + endpoint
         headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
         response = requests.get(url=url, headers=headers).json()
@@ -300,7 +311,7 @@ class Package:
         Downloads & decrypts the specified file to the path specified
         """
         self._block_operation_without_keycode()
-        file_info = self.get_file_information(file_id)
+        file_info = self.get_file_information(file_id, directory_id)
         if not file_name:
             file_name = file_info["fileName"]
         total = file_info["fileParts"]
