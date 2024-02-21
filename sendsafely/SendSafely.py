@@ -4,7 +4,12 @@ import warnings
 
 import requests
 import pgpy
-from cryptography import CryptographyDeprecationWarning
+import cryptography
+major, minor, patch = [int(x, 10) for x in cryptography.__version__.split('.')]
+if major < 41:
+    from cryptography import CryptographyDeprecationWarning
+else:
+    from cryptography.utils import CryptographyDeprecationWarning
 from pgpy import PGPMessage
 from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm
 from sendsafely.Package import Package
