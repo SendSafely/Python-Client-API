@@ -20,7 +20,7 @@ import pgpy
 import requests
 from pgpy import PGPMessage
 from pgpy.constants import HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, KeyFlags
-
+from pgpy.packet.subpackets.signature import FlagList
 
 def _encrypt_file_part(file, server_secret, client_secret, path=True):
     """
@@ -104,6 +104,48 @@ def _encrypt_message(message_to_encrypt, server_secret, client_secret):
                                      hash=HashAlgorithm.SHA256)
     return base64.b64encode(bytes(cipher_message)).decode('utf-8')
 
+def _inject_encryption_flags(user, key_flags=True, hash=True, symmetric=True, compression=True):
+    if not key_flags:
+        user.selfsig._signature.subpackets.addnew('KeyFlags', hashed=True,
+                                              flags={KeyFlags.EncryptCommunications,
+                                                     KeyFlags.EncryptStorage})
+        user.selfsig._signature.subpackets['h_KeyFlags'] = user.selfsig._signature.subpackets['KeyFlags'][0]
+    if not hash:
+        user.selfsig._signature.subpackets.addnew('PreferredHashAlgorithms', hashed=True, flags=[HashAlgorithm.SHA256])
+    if not symmetric:
+        user.selfsig._signature.subpackets.addnew('PreferredSymmetricAlgorithms', hashed=True,
+                                                  flags=[SymmetricKeyAlgorithm.AES256])
+    if not compression:
+        user.selfsig._signature.subpackets.addnew('PreferredCompressionAlgorithms', hashed=True,
+                                                  flags=[CompressionAlgorithm.Uncompressed])
+
+def _enforce_encryption_flags(user):
+    # https://github.com/SecurityInnovation/PGPy/issues/257
+    # PGPY requires KeyFlags.EncryptCommunications and KeyFlags.EncryptStorage for public key to encrypt
+    # which we are not setting in our current APIs
+    # the following code injects the require attributes to the public key signature to bypass PGPY check
+    has_key_flags, has_hash, has_symmetric, has_compression = True, True, True, True
+    key_flags = user.selfsig._signature.subpackets['h_KeyFlags']
+    hash = user.selfsig._signature.subpackets['h_PreferredHashAlgorithms']
+    symmetric = user.selfsig._signature.subpackets['h_PreferredSymmetricAlgorithms']
+    compression = user.selfsig._signature.subpackets['h_PreferredCompressionAlgorithms']
+    if (len(key_flags) > 0 and len(hash) > 0 and len(symmetric) > 0 and len(compression) > 0):
+        key_flags, hash, symmetric, compression = key_flags[0], hash[0], symmetric[0], compression[0]
+    else:
+        _inject_encryption_flags(user, False, False, False, False)
+        return
+
+    if not (KeyFlags.EncryptStorage in key_flags.__flags__ and KeyFlags.EncryptCommunications in key_flags.__flags__):
+        has_key_flags = False
+    if not HashAlgorithm.SHA256 in hash.__flags__:
+        has_hash = False
+    if not SymmetricKeyAlgorithm.AES256 in symmetric.__flags__:
+        has_symmetric = False
+    if not CompressionAlgorithm.Uncompressed in compression.__flags__:
+        has_compression = False
+
+    _inject_encryption_flags(user, has_key_flags, has_hash, has_symmetric, has_compression)
+    return user
 
 def _encrypt_keycode(keycode, public_key):
     """
@@ -113,11 +155,6 @@ def _encrypt_keycode(keycode, public_key):
     :return: The encrypted keycode
     """
     key_pair = pgpy.PGPKey.from_blob(public_key)[0]
-
-    # https://github.com/SecurityInnovation/PGPy/issues/257
-    # PGPY requires KeyFlags.EncryptCommunications and KeyFlags.EncryptStorage for public key to encrypt
-    # which we are not setting in our current APIs
-    # the following code injects the require attributes to the public key signature to bypass PGPY check
     user = None
     if key_pair.is_primary:
         if user is not None:
@@ -126,21 +163,12 @@ def _encrypt_keycode(keycode, public_key):
             user = next(iter(key_pair.userids))
 
     if user is not None:
-        user.selfsig._signature.subpackets.addnew('KeyFlags', hashed=True,
-                                                  flags={KeyFlags.EncryptCommunications,
-                                                         KeyFlags.EncryptStorage})
-        user.selfsig._signature.subpackets['h_KeyFlags'] = user.selfsig._signature.subpackets['KeyFlags'][0]
-        user.selfsig._signature.subpackets.addnew('PreferredHashAlgorithms', hashed=True, flags=[HashAlgorithm.SHA256])
-        user.selfsig._signature.subpackets.addnew('PreferredSymmetricAlgorithms', hashed=True,
-                                                  flags=[SymmetricKeyAlgorithm.AES256])
-        user.selfsig._signature.subpackets.addnew('PreferredCompressionAlgorithms', hashed=True,
-                                                  flags=[CompressionAlgorithm.Uncompressed])
-
-    message = PGPMessage.new(keycode, compression=CompressionAlgorithm.Uncompressed,
-                             cipher=SymmetricKeyAlgorithm.AES256,
-                             hash=HashAlgorithm.SHA256)
-    cipher_message = key_pair.encrypt(message)
-    return str(cipher_message)
+        _enforce_encryption_flags(user)
+        message = PGPMessage.new(keycode, compression=CompressionAlgorithm.Uncompressed,
+                                 cipher=SymmetricKeyAlgorithm.AES256,
+                                 hash=HashAlgorithm.SHA256)
+        cipher_message = key_pair.encrypt(message)
+        return str(cipher_message)
 
 
 def _decrypt_message(message_to_decrypt, server_secret, client_secret):

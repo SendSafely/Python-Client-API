@@ -11,11 +11,11 @@ if major < 41:
 else:
     from cryptography.utils import CryptographyDeprecationWarning
 from pgpy import PGPMessage
-from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm
+from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, PubKeyAlgorithm
 from sendsafely.Package import Package
 from sendsafely.exceptions import GetPackagesException, GetUserInformationException, TrustedDeviceException, \
     DeletePackageException, GetPackageInformationFailedException, GetKeycodeFailedException
-from sendsafely.utilities import make_headers, _get_string_from_file, read_key_pair
+from sendsafely.utilities import make_headers, _get_string_from_file
 
 
 class SendSafely:
@@ -73,13 +73,15 @@ class SendSafely:
        :param description: A description of this public key to submit to SendSafely
        :return: The response, including key pair
        """
-        key = pgpy.PGPKey.new(pgpy.constants.PubKeyAlgorithm.RSAEncryptOrSign, 2048)
         email = self.get_user_information()["email"]
+        key = pgpy.PGPKey.new(pgpy.constants.PubKeyAlgorithm.RSAEncryptOrSign, 2048)
         uid = pgpy.PGPUID.new('Trusted Browser', email=email)
-        key.add_uid(uid=uid, usage={KeyFlags.EncryptCommunications, KeyFlags.EncryptStorage},
+        key.add_uid(uid=uid, usage={KeyFlags.Sign, KeyFlags.Certify},
                     hashes=[HashAlgorithm.SHA256],
                     ciphers=[SymmetricKeyAlgorithm.AES256],
                     compression=[CompressionAlgorithm.Uncompressed])
+        subkey = pgpy.PGPKey.new(PubKeyAlgorithm.RSAEncryptOrSign, 2048)
+        key.add_subkey(subkey, usage={KeyFlags.EncryptCommunications, KeyFlags.EncryptStorage})
         public_key = str(key.pubkey)
         endpoint = "/public-key"
         url = self.BASE_URL + endpoint
