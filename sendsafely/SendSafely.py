@@ -14,7 +14,7 @@ from pgpy import PGPMessage
 from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, PubKeyAlgorithm
 from sendsafely.Package import Package
 from sendsafely.exceptions import GetPackagesException, GetUserInformationException, TrustedDeviceException, \
-    DeletePackageException, GetPackageInformationFailedException, GetKeycodeFailedException
+    DeletePackageException, GetPackageInformationFailedException, GetKeycodeFailedException, MoveFileException
 from sendsafely.utilities import make_headers, _get_string_from_file
 
 
@@ -268,3 +268,19 @@ class SendSafely:
                 row_index += page_size
         except Exception as e:
             GetPackagesException(details=str(e))
+
+    def move_file(self, package_id, file_id, destination_directory_id):
+        """
+        Moves the file with the specified id to the directory with the specified ID
+        """
+        endpoint = "/package/" + package_id + "/directory/" + destination_directory_id + "/file/" + file_id
+        url = self.BASE_URL + endpoint
+        headers = make_headers(self.API_SECRET, self.API_KEY, endpoint)
+        try:
+            response = requests.post(url=url, headers=headers).json()
+        except Exception as e:
+            raise MoveFileException(details=e)
+
+        if response["response"] != "SUCCESS":
+            raise MoveFileException(details=response["message"])
+        return response

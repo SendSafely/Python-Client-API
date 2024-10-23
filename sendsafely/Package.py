@@ -13,7 +13,7 @@ from sendsafely.Progress import Progress
 import warnings
 
 from sendsafely.exceptions import CreatePackageFailedException, FinalizePackageFailedException, DownloadFileException, \
-    UploadFileException, MoveFileException, DeletePackageException, KeycodeRequiredException, GetPackageInformationFailedException, \
+    UploadFileException, DeletePackageException, KeycodeRequiredException, GetPackageInformationFailedException, \
     UploadKeycodeException, AddRecipientFailedException, UpdateRecipientFailedException, UploadMessageException, \
     GetPublicKeysFailedException, GetFileInformationException, DeleteFileException, GetPackageMessageException, \
     AddFileFailedException
@@ -274,22 +274,6 @@ class Package:
             raise AddFileFailedException(details=str(e))
         if response["response"] != "SUCCESS":
             raise AddFileFailedException(details=response["message"])
-        return response
-
-    def move_file_to_directory(self, file_id, directory_id):
-        """
-        Moves the file with the specified id to the directory with the specified ID
-        """
-        endpoint = "/package/" + self.package_id + "/directory/" + directory_id + "/file/" + file_id
-        url = self.sendsafely.BASE_URL + endpoint
-        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
-        try:
-            response = requests.post(url=url, headers=headers).json()
-        except Exception as e:
-            raise MoveFileException(details=e)
-
-        if response["response"] != "SUCCESS":
-            raise MoveFileException(details=response["message"])
         return response
 
     def delete_file_from_package(self, file_id):
