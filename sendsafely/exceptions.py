@@ -21,6 +21,18 @@ class InvalidCredentialsException(Exception):
         super().__init__(display)
 
 
+class UpdatePackageException(Exception):
+    """Exception raised during package update.
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred during package update."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+
 class DeletePackageException(Exception):
     """Exception raised during package deletion.
     """
@@ -38,6 +50,30 @@ class DeleteFileException(Exception):
     """
     def __init__(self, details=None):
         self.message = "An error occurred during package file deletion."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+
+class DeleteDirectoryException(Exception):
+    """Exception raised during Workspace directory deletion.
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred during Workspace directory deletion."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+
+class RenameDirectoryException(Exception):
+    """Exception raised while trying to rename a Workspace directory.
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred while trying to rename a Workspace directory."
         self.details = details
         display = self.details
         if display is None:
@@ -260,3 +296,48 @@ class KeycodeRequiredException(Exception):
             display = self.message
         super().__init__(display)
 
+
+class MoveFileException(Exception):
+    """Exception that occurs while attempting to move a Workspace file
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred while attempting to move a Workspace file."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+
+class MoveDirectoryException(Exception):
+    """Exception that occurs while attempting to move a Workspace directory
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred while attempting to move a Workspace directory."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+class CreateDirectoryException(Exception):
+    """Exception that occurs while creating a Workspace subdirectory
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred while attempting to create a Workspace directory."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
+class GetDirectoryException(Exception):
+    """Exception that occurs while attempting to get Directory information
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred while getting Directory information."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)

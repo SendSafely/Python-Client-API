@@ -1,6 +1,8 @@
 import json
 import math
 import os
+import re
+
 import requests
 import cryptography
 major, minor, patch = [int(x, 10) for x in cryptography.__version__.split('.')]
@@ -16,7 +18,8 @@ from sendsafely.exceptions import CreatePackageFailedException, FinalizePackageF
     UploadFileException, DeletePackageException, KeycodeRequiredException, GetPackageInformationFailedException, \
     UploadKeycodeException, AddRecipientFailedException, UpdateRecipientFailedException, UploadMessageException, \
     GetPublicKeysFailedException, GetFileInformationException, DeleteFileException, GetPackageMessageException, \
-    AddFileFailedException
+    AddFileFailedException, MoveFileException, GetDirectoryException, DeleteDirectoryException, \
+    RenameDirectoryException, UpdatePackageException, MoveDirectoryException, CreateDirectoryException
 
 from sendsafely.utilities import _generate_keycode, make_headers, _encrypt_message, _encrypt_file_part, _upload_file_part_to_s3, \
     _calculate_package_checksum, _decrypt_message, _get_upload_urls, _get_download_urls, _update_file_completion_status, _encrypt_keycode, \
@@ -28,7 +31,7 @@ class Package:
     To be used in conjunction with it's handler the SendSafely object. Should not be instantiated directly.
     """
 
-    def __init__(self, sendsafely_instance, package_variables=None):
+    def __init__(self, sendsafely_instance, package_variables=None, workspace=False):
         """
         :param sendsafely_instance: The authenticated SendSafely object.
         :param package_variables:
@@ -39,7 +42,10 @@ class Package:
         if package_variables is None:
             self.client_secret = _generate_keycode()
             self.sendsafely = sendsafely_instance
-            data = {"vdr": "false"}
+            if workspace:
+                data = {"vdr": "true"}
+            else:
+                data = {"vdr": "false"}
             endpoint = "/package"
             url = self.sendsafely.BASE_URL + endpoint
             headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint,
@@ -181,7 +187,7 @@ class Package:
                     progress = progress + 1
                 part = part + 25
             file.close()
-            response = _update_file_completion_status(self, file_id=file_id, complete=True)
+            response = _update_file_completion_status(self, file_id=file_id, directory_id=directory_id, complete=True)
             response["fileId"] = file_id
             return response
         except Exception as e:
@@ -276,17 +282,20 @@ class Package:
             raise AddFileFailedException(details=response["message"])
         return response
 
-    def delete_file_from_package(self, file_id):
+    def delete_file_from_package(self, file_id, directory_id=None):
         """
         Deletes the file with the specified id from the package with the specified ID
         """
-        endpoint = "/package/" + self.package_id + "/file/" + file_id
+        if directory_id:
+            endpoint = "/package/" + self.package_id + "/directory/" + directory_id + "/file/" + file_id
+        else:
+            endpoint = "/package/" + self.package_id + "/file/" + file_id
         url = self.sendsafely.BASE_URL + endpoint
         headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
         try:
             response = requests.delete(url=url, headers=headers).json()
         except Exception as e:
-            raise DeleteFileException(details=e)
+            raise DeleteFileException(details=str(e))
         if response["response"] != "SUCCESS":
             raise DeleteFileException(details=response["message"])
         return response
@@ -315,6 +324,7 @@ class Package:
         if not file_name:
             file_name = file_info["fileName"]
         total = file_info["fileParts"]
+        file_name = re.sub(r'[<>:\"/\\|?*]', '_', file_name)
         file_path = download_directory + "/" + file_name
         passphrase = self.server_secret + self.client_secret
         progress = 1
@@ -338,6 +348,111 @@ class Package:
         except Exception as e:
             raise DownloadFileException(details=str(e))
 
+    def update_workspace_name(self, workspace_name):
+        """
+        Rename a Workspace (packageLabel)
+        """
+        endpoint = "/package/" + self.package_id
+        url = self.sendsafely.BASE_URL + endpoint
+        body = {"label": workspace_name}
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint, request_body=json.dumps(body))
+        try:
+            response = requests.post(url=url, headers=headers, json=body).json()
+        except Exception as e:
+            raise UpdatePackageException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise UpdatePackageException(details=response["message"])
+        return response
+
+    def move_file(self, file_id, destination_directory_id):
+        """
+        Moves a Workspace file with the specified id to the directory with the specified ID
+        """
+        endpoint = "/package/" + self.package_id + "/directory/" + destination_directory_id + "/file/" + file_id
+        url = self.sendsafely.BASE_URL + endpoint
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
+        try:
+            response = requests.post(url=url, headers=headers).json()
+        except Exception as e:
+            raise MoveFileException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise MoveFileException(details=response["message"])
+        return response
+
+    def create_directory(self, directory_name, source_directory_id=None):
+        if not source_directory_id:
+            source_directory_id = self.sendsafely.get_package_information(self.package_id)["rootDirectoryId"]
+        endpoint = "/package/" + self.package_id + "/directory/" + source_directory_id + "/subdirectory/"
+        url = self.sendsafely.BASE_URL + endpoint
+        body = {"directoryName": directory_name}
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint, request_body=json.dumps(body))
+        try:
+            response = requests.put(url=url, headers=headers, json=body).json()
+        except Exception as e:
+            raise CreateDirectoryException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise CreateDirectoryException(details=response["message"])
+        return response
+
+    def move_directory(self, source_directory_id, target_directory_id):
+        """
+        Moves a Workspace directory with the specified id to the directory with the specified ID
+        """
+        endpoint = "/package/" + self.package_id + "/move/" + source_directory_id + "/" + target_directory_id
+        url = self.sendsafely.BASE_URL + endpoint
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
+        try:
+            response = requests.post(url=url, headers=headers).json()
+        except Exception as e:
+            raise MoveDirectoryException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise MoveDirectoryException(details=response["message"])
+        return response
+
+    def get_directory_information(self, directory_id):
+        endpoint = "/package/" + self.package_id + "/directory/" + directory_id
+        url = self.sendsafely.BASE_URL + endpoint
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
+        try:
+            response = requests.get(url=url, headers=headers).json()
+        except Exception as e:
+            raise GetDirectoryException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise GetDirectoryException(details=response["message"])
+        return response
+
+    def delete_directory(self, directory_id):
+        endpoint = "/package/" + self.package_id + "/directory/" + directory_id
+        url = self.sendsafely.BASE_URL + endpoint
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint)
+        try:
+            response = requests.delete(url=url, headers=headers).json()
+        except Exception as e:
+            raise DeleteDirectoryException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise DeleteDirectoryException(details=response["message"])
+        return response
+
+    def rename_directory(self, directory_id, directory_name):
+        endpoint = "/package/" + self.package_id + "/directory/" + directory_id
+        url = self.sendsafely.BASE_URL + endpoint
+        body = {"directoryName": directory_name}
+        headers = make_headers(self.sendsafely.API_SECRET, self.sendsafely.API_KEY, endpoint, request_body=json.dumps(body))
+        try:
+            response = requests.post(url, headers=headers, json=body).json()
+        except Exception as e:
+            raise RenameDirectoryException(details=str(e))
+
+        if response["response"] != "SUCCESS":
+            raise RenameDirectoryException(details=response["message"])
+        return response
+
     def _block_operation_without_keycode(self):
         if not self.initialized_via_keycode:
             raise KeycodeRequiredException()
@@ -348,5 +463,6 @@ class Package:
         percent = (current / total) * 100
         percent = str(round(percent, 1))
         progress_instance.update_progress(file_id, percent)
+
 
 
