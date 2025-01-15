@@ -230,7 +230,7 @@ def _get_upload_urls(package, file_id, part=1):
     return upload_urls
 
 
-def _update_file_completion_status(package, file_id, complete=False):
+def _update_file_completion_status(package, file_id, directory_id=None, complete=False):
     """
     Sets the file upload status as complete, the server will verify if all segments have been uploaded
     :param file_id: The ID (string) of the file we're updating (must be associated with the package_id from previously)
@@ -240,6 +240,8 @@ def _update_file_completion_status(package, file_id, complete=False):
     endpoint = '/package/' + package.package_id + '/file/' + file_id + '/upload-complete'
     url = package.sendsafely.BASE_URL + endpoint
     body = {'complete': complete}
+    if directory_id is not None:
+        body['directoryId'] = directory_id
     headers = make_headers(package.sendsafely.API_SECRET, package.sendsafely.API_KEY, endpoint, request_body=json.dumps(body))
     return requests.post(url=url, json=body, headers=headers).json()
 
