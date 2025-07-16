@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
 	name='sendsafely',
-	version='1.0.8',
+	version='1.0.9.2',
 	packages=['sendsafely'],
 	description='The SendSafely Client API allows programmatic access to SendSafely and provides a layer of abstraction from our REST API, which requires developers to perform several complex tasks in a correct manner.',
 	long_description_content_type="text/markdown",
@@ -12,8 +12,12 @@ setup(
 	install_requires=[
 		'standard-imghdr',
 		'requests',
-		'PGPy'
+		'cryptography',
+		'pyasn1'
 	],
+	package_data={
+		'sendsafely': ['pgpy/**/*'],
+	},
 	python_requires='>=3',
 	license='Apache License Version 2.0',
 	classifiers=[

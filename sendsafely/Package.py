@@ -3,6 +3,7 @@ import math
 import os
 import re
 
+from .pgpy import PGPMessage
 import requests
 import cryptography
 major, minor, patch = [int(x, 10) for x in cryptography.__version__.split('.')]
@@ -10,7 +11,6 @@ if major < 41:
     from cryptography import CryptographyDeprecationWarning
 else:
     from cryptography.utils import CryptographyDeprecationWarning
-from pgpy import PGPMessage
 from sendsafely.Progress import Progress
 import warnings
 

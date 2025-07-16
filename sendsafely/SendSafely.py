@@ -3,15 +3,14 @@ import re
 import warnings
 
 import requests
-import pgpy
 import cryptography
 major, minor, patch = [int(x, 10) for x in cryptography.__version__.split('.')]
 if major < 41:
     from cryptography import CryptographyDeprecationWarning
 else:
     from cryptography.utils import CryptographyDeprecationWarning
-from pgpy import PGPMessage
-from pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, PubKeyAlgorithm
+from .pgpy import PGPMessage, PGPUID, PGPKey
+from .pgpy.constants import KeyFlags, HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, PubKeyAlgorithm
 from sendsafely.Package import Package
 from sendsafely.exceptions import GetPackagesException, GetUserInformationException, TrustedDeviceException, \
     DeletePackageException, GetPackageInformationFailedException, GetKeycodeFailedException
@@ -74,13 +73,13 @@ class SendSafely:
        :return: The response, including key pair
        """
         email = self.get_user_information()["email"]
-        key = pgpy.PGPKey.new(pgpy.constants.PubKeyAlgorithm.RSAEncryptOrSign, 2048)
-        uid = pgpy.PGPUID.new('Trusted Browser', email=email)
+        key = PGPKey.new(PubKeyAlgorithm.RSAEncryptOrSign, 2048)
+        uid = PGPUID.new('Trusted Browser', email=email)
         key.add_uid(uid=uid, usage={KeyFlags.Sign, KeyFlags.Certify},
                     hashes=[HashAlgorithm.SHA256],
                     ciphers=[SymmetricKeyAlgorithm.AES256],
                     compression=[CompressionAlgorithm.Uncompressed])
-        subkey = pgpy.PGPKey.new(PubKeyAlgorithm.RSAEncryptOrSign, 2048)
+        subkey = PGPKey.new(PubKeyAlgorithm.RSAEncryptOrSign, 2048)
         key.add_subkey(subkey, usage={KeyFlags.EncryptCommunications, KeyFlags.EncryptStorage})
         public_key = str(key.pubkey)
         endpoint = "/public-key"
@@ -140,7 +139,7 @@ class SendSafely:
             if keycode_json['response'] == 'FAIL':
                 raise GetKeycodeFailedException(details=str(keycode))
 
-            key_pair = pgpy.PGPKey.from_blob(str(private_key))[0]
+            key_pair = PGPKey.from_blob(str(private_key))[0]
             keycode_message = PGPMessage.from_blob(keycode)
             decrypted_keycode = key_pair.decrypt(keycode_message).message
             return {"keyCode": decrypted_keycode}
