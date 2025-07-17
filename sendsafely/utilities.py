@@ -16,11 +16,10 @@ import json
 import os
 import secrets
 
-import pgpy
 import requests
-from pgpy import PGPMessage
-from pgpy.constants import HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, KeyFlags
-from pgpy.packet.subpackets.signature import FlagList
+from .pgpy import PGPMessage, PGPKey
+from .pgpy.constants import HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, KeyFlags
+
 
 def _encrypt_file_part(file, server_secret, client_secret, path=True):
     """
@@ -154,7 +153,7 @@ def _encrypt_keycode(keycode, public_key):
     :param public_key
     :return: The encrypted keycode
     """
-    key_pair = pgpy.PGPKey.from_blob(public_key)[0]
+    key_pair = PGPKey.from_blob(public_key)[0]
     user = None
     if key_pair.is_primary:
         if user is not None:
