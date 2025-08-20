@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
 	name='sendsafely',
-	version='1.0.9.2',
-	packages=['sendsafely'],
+	version='1.0.9.6',
+	packages=['sendsafely', 'sendsafely/pgpy', 'sendsafely/pgpy/packet/subpackets'],
 	description='The SendSafely Client API allows programmatic access to SendSafely and provides a layer of abstraction from our REST API, which requires developers to perform several complex tasks in a correct manner.',
 	long_description_content_type="text/markdown",
 	author='SendSafely',
