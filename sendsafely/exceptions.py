@@ -56,6 +56,17 @@ class DeleteFileException(Exception):
             display = self.message
         super().__init__(display)
 
+class MoveFileException(Exception):
+    """Exception raised during file movement.
+    """
+    def __init__(self, details=None):
+        self.message = "An error occurred during file movement."
+        self.details = details
+        display = self.details
+        if display is None:
+            display = self.message
+        super().__init__(display)
+
 
 class DeleteDirectoryException(Exception):
     """Exception raised during Workspace directory deletion.
