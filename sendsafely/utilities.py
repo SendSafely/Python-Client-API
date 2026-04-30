@@ -15,6 +15,7 @@ import hmac
 import json
 import os
 import secrets
+import sys
 import time
 
 import requests
@@ -202,10 +203,15 @@ def _upload_file_part_to_s3(encrypted_file_part, url):
         try:
             return requests.put(url=url, data=encrypted_file_part)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout,
-                requests.exceptions.ChunkedEncodingError):
+                requests.exceptions.ChunkedEncodingError) as e:
             if attempt == max_attempts - 1:
                 raise
-            time.sleep(min(2 ** attempt, max_backoff_seconds))
+            sleep_seconds = min(2 ** attempt, max_backoff_seconds)
+            sys.stdout.write(
+                '\nRetrying S3 part upload (attempt {0}/{1}) after {2}: sleeping {3}s\n'.format(
+                    attempt + 2, max_attempts, type(e).__name__, sleep_seconds))
+            sys.stdout.flush()
+            time.sleep(sleep_seconds)
 
 
 def _calculate_package_checksum(package_code, keycode):
