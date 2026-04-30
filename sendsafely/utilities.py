@@ -15,6 +15,7 @@ import hmac
 import json
 import os
 import secrets
+import time
 
 import requests
 from .pgpy import PGPMessage, PGPKey
@@ -195,7 +196,16 @@ def _upload_file_part_to_s3(encrypted_file_part, url):
     :param url: The S3 URL we're uploading to
     :return: The JSON response from S3.
     """
-    return requests.put(url=url, data=encrypted_file_part)
+    max_attempts = 5
+    max_backoff_seconds = 180
+    for attempt in range(max_attempts):
+        try:
+            return requests.put(url=url, data=encrypted_file_part)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError):
+            if attempt == max_attempts - 1:
+                raise
+            time.sleep(min(2 ** attempt, max_backoff_seconds))
 
 
 def _calculate_package_checksum(package_code, keycode):
