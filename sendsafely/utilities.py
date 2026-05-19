@@ -15,10 +15,15 @@ import hmac
 import json
 import os
 import secrets
+import time
 
 import requests
 from .pgpy import PGPMessage, PGPKey
 from .pgpy.constants import HashAlgorithm, SymmetricKeyAlgorithm, CompressionAlgorithm, KeyFlags
+
+_S3_UPLOAD_MAX_RETRIES = 6
+_S3_UPLOAD_TIMEOUT_SECONDS = 120
+_S3_UPLOAD_RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504]
 
 
 def _encrypt_file_part(file, server_secret, client_secret, path=True):
@@ -193,9 +198,28 @@ def _upload_file_part_to_s3(encrypted_file_part, url):
     Content-Type must NOT be specified
     :param encrypted_file_part: Part of a file to upload to S3. Must not exceed 2621440 Bytes.
     :param url: The S3 URL we're uploading to
-    :return: The JSON response from S3.
+    :return: The response from S3 once the part has been accepted.
+    :raises requests.exceptions.RequestException: If the part still cannot be uploaded after retries.
     """
-    return requests.put(url=url, data=encrypted_file_part)
+    last_exception = None
+    for retries in range(_S3_UPLOAD_MAX_RETRIES):
+        try:
+            response = requests.put(url=url, data=encrypted_file_part, timeout=_S3_UPLOAD_TIMEOUT_SECONDS)
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+        else:
+            if response.status_code not in _S3_UPLOAD_RETRY_STATUS_CODES:
+                response.raise_for_status()
+                return response
+            last_exception = requests.exceptions.HTTPError(
+                "S3 returned retryable failure status %d" % response.status_code, response=response
+            )
+
+        if retries == _S3_UPLOAD_MAX_RETRIES - 1:
+            break
+        time.sleep(2 ** retries)
+
+    raise last_exception
 
 
 def _calculate_package_checksum(package_code, keycode):
